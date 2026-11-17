@@ -8,12 +8,52 @@
 #include <type_traits>
 #include <vector>
 
+struct AVLTreeInvariantTestAccess {
+    static bool hasValidInvariants(const AVLTree& tree) noexcept {
+        int calculatedHeight = 0;
+        return validateNode(tree.root_, nullptr, nullptr, calculatedHeight)
+            && calculatedHeight == tree.getHeight();
+    }
+
+private:
+    static bool validateNode(const AVLNode* node,
+                             const int* lowerBound,
+                             const int* upperBound,
+                             int& calculatedHeight) noexcept {
+        if (node == nullptr) {
+            calculatedHeight = 0;
+            return true;
+        }
+        if ((lowerBound != nullptr && node->key <= *lowerBound)
+            || (upperBound != nullptr && node->key >= *upperBound)) {
+            return false;
+        }
+
+        int leftHeight = 0;
+        int rightHeight = 0;
+        if (!validateNode(node->left, lowerBound, &node->key, leftHeight)
+            || !validateNode(node->right, &node->key, upperBound, rightHeight)) {
+            return false;
+        }
+
+        calculatedHeight = 1 + (leftHeight > rightHeight ? leftHeight : rightHeight);
+        const int balanceFactor = leftHeight - rightHeight;
+        return node->height == calculatedHeight
+            && -1 <= balanceFactor && balanceFactor <= 1;
+    }
+};
+
 namespace {
 
 // ---- Shared checks ---------------------------------------------------------
 
+void assertTreeInvariants(const AVLTree& tree) {
+    assert(AVLTreeInvariantTestAccess::hasValidInvariants(tree));
+}
+
 // Confirms the inorder output is sorted and matches the expected contents.
 void assertInorder(const AVLTree& tree, const std::vector<int>& expected) {
+    assertTreeInvariants(tree);
     const std::vector<int> actual = tree.inorderTraversal();
     if (!std::is_sorted(actual.begin(), actual.end()) || actual != expected) {
         std::printf("FAIL: inorder {");
@@ -32,6 +72,7 @@ void assertInorder(const AVLTree& tree, const std::vector<int>& expected) {
 
 // Exact expected height plus a root balance factor inside [-1, 1].
 void assertRootState(const AVLTree& tree, int expectedHeight) {
+    assertTreeInvariants(tree);
     if (tree.getHeight() != expectedHeight) {
         std::printf("FAIL: height %d expected %d (bf %d)\n",
                     tree.getHeight(), expectedHeight, tree.getBalanceFactor());
@@ -136,6 +177,47 @@ void testInsertionAndSearch() {
     }
     assertHeightBounds(mixed, 100);
     assertInorder(mixed, range(1, 100));
+}
+
+void testTraversalOrdersAndEmptyTree() {
+    AVLTree tree;
+    assert(tree.inorderTraversal().empty());
+    assert(tree.preorderTraversal().empty());
+    assert(tree.postorderTraversal().empty());
+    assertTreeInvariants(tree);
+
+    tree.insert(2);
+    tree.insert(1);
+    tree.insert(3);
+    assert(tree.inorderTraversal() == std::vector<int>({1, 2, 3}));
+    assert(tree.preorderTraversal() == std::vector<int>({2, 1, 3}));
+    assert(tree.postorderTraversal() == std::vector<int>({1, 3, 2}));
+    assertTreeInvariants(tree);
+}
+
+void testRecursiveInvariantsAfterMutations() {
+    AVLTree tree;
+    std::vector<int> expected;
+
+    for (int key = 1; key <= 100; ++key) {
+        const int value = (key * 37) % 101;
+        tree.insert(value);
+        expected.push_back(value);
+        std::sort(expected.begin(), expected.end());
+        assertTreeInvariants(tree);
+        assertInorder(tree, expected);
+    }
+
+    for (int key = 1; key <= 100; ++key) {
+        assert(tree.remove(key));
+        expected.erase(std::lower_bound(expected.begin(), expected.end(), key));
+        assertTreeInvariants(tree);
+        assertInorder(tree, expected);
+    }
+
+    assert(!tree.remove(1000));
+    assertTreeInvariants(tree);
+    assertInorder(tree, {});
 }
 
 // All four insertion rotation patterns collapse to the same balanced shape.
@@ -359,6 +441,8 @@ void testDeletionUntilEmpty() {
 int main() {
     testOwnershipContract();
     testInsertionAndSearch();
+    testTraversalOrdersAndEmptyTree();
+    testRecursiveInvariantsAfterMutations();
     testInsertionRotations();
     testDeletionStructuralCases();
     testDeletionTriggeredSingleRotation();

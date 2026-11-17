@@ -26,6 +26,8 @@ public:
     void clear() noexcept;
 
 private:
+    friend struct AVLTreeInvariantTestAccess;
+
     AVLNode* root_;
 
     static int nodeHeight(const AVLNode* node) noexcept;
