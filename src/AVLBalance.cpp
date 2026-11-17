@@ -26,7 +26,7 @@ AVLNode* AVLTree::rotateRight(AVLNode* node) noexcept {
     return pivot;
 }
 
-AVLNode* AVLTree::rebalance(AVLNode* node) noexcept {
+AVLNode* AVLTree::rebalance(AVLNode* node) {
     if (node == nullptr) {
         return nullptr;
     }
@@ -39,8 +39,13 @@ AVLNode* AVLTree::rebalance(AVLNode* node) noexcept {
         // otherwise a single right rotation (covers a left child whose
         // balance factor is +1 or 0, the latter arising during deletion).
         if (nodeBalanceFactor(node->left) < 0) {
+            rotationEvents_.push_back(
+                {AVLRotationType::LeftRight, mutationType_, node->key, operationKey_});
             node->left = rotateLeft(node->left);
+            return rotateRight(node);
         }
+        rotationEvents_.push_back(
+            {AVLRotationType::Right, mutationType_, node->key, operationKey_});
         return rotateRight(node);
     }
 
@@ -49,8 +54,13 @@ AVLNode* AVLTree::rebalance(AVLNode* node) noexcept {
         // otherwise a single left rotation (covers a right child whose
         // balance factor is -1 or 0, the latter arising during deletion).
         if (nodeBalanceFactor(node->right) > 0) {
+            rotationEvents_.push_back(
+                {AVLRotationType::RightLeft, mutationType_, node->key, operationKey_});
             node->right = rotateRight(node->right);
+            return rotateLeft(node);
         }
+        rotationEvents_.push_back(
+            {AVLRotationType::Left, mutationType_, node->key, operationKey_});
         return rotateLeft(node);
     }
 

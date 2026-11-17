@@ -47,6 +47,9 @@ AVLNode* AVLTree::removeNode(AVLNode* node, int key, bool& removed) {
 }
 
 bool AVLTree::remove(int key) {
+    rotationEvents_.clear();
+    mutationType_ = AVLMutationType::Delete;
+    operationKey_ = key;
     bool removed = false;
     root_ = removeNode(root_, key, removed);
     return removed;

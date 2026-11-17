@@ -36,6 +36,9 @@ bool AVLTree::containsNode(const AVLNode* node, int key) noexcept {
 }
 
 void AVLTree::insert(int key) {
+    rotationEvents_.clear();
+    mutationType_ = AVLMutationType::Insert;
+    operationKey_ = key;
     root_ = insertNode(root_, key);
 }
 

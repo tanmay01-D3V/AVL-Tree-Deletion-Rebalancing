@@ -1,3 +1,6 @@
 /build/
 /cmake-build-*/
 /CMakeUserPresets.json
+/data/avl-studio.sqlite3
+/data/avl-studio.sqlite3-shm
+/data/avl-studio.sqlite3-wal

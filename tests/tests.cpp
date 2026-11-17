@@ -82,6 +82,15 @@ void assertRootState(const AVLTree& tree, int expectedHeight) {
     assert(-1 <= balanceFactor && balanceFactor <= 1);
 }
 
+void assertRotation(AVLTree& tree,
+                    AVLRotationType expectedType,
+                    int expectedPivot) {
+    const std::vector<AVLRotationEvent> events = tree.takeRotationEvents();
+    assert(events.size() == 1);
+    assert(events[0].type == expectedType);
+    assert(events[0].pivotKey == expectedPivot);
+}
+
 // Public-API AVL invariant check for a tree holding `size` nodes: the height
 // must respect the structural AVL bounds and the root balance factor must
 // stay within [-1, 1].
@@ -134,6 +143,28 @@ void testOwnershipContract() {
     tree.clear();
     tree.clear();
     assert(tree.getHeight() == 0);
+}
+
+void testSnapshot() {
+    AVLTree tree;
+    tree.insert(2);
+    tree.insert(1);
+    tree.insert(3);
+
+    const std::vector<AVLTreeNodeSnapshot> nodes = tree.snapshot();
+    assert(nodes.size() == 3);
+    assert(nodes[0].key == 2);
+    assert(nodes[0].leftIndex == 1);
+    assert(nodes[0].rightIndex == 2);
+    assert(nodes[0].height == 2);
+    assert(nodes[0].balanceFactor == 0);
+    assert(nodes[1].key == 1);
+    assert(nodes[1].leftIndex == -1 && nodes[1].rightIndex == -1);
+    assert(nodes[2].key == 3);
+    assert(nodes[2].leftIndex == -1 && nodes[2].rightIndex == -1);
+
+    tree.clear();
+    assert(tree.snapshot().empty());
 }
 
 // ---- Insertion and search --------------------------------------------------
@@ -226,6 +257,7 @@ void testInsertionRotations() {
     ll.insert(3);
     ll.insert(2);
     ll.insert(1);
+    assertRotation(ll, AVLRotationType::Right, 3);
     assertRootState(ll, 2);
     assertInorder(ll, {1, 2, 3});
 
@@ -233,6 +265,7 @@ void testInsertionRotations() {
     rr.insert(1);
     rr.insert(2);
     rr.insert(3);
+    assertRotation(rr, AVLRotationType::Left, 1);
     assertRootState(rr, 2);
     assertInorder(rr, {1, 2, 3});
 
@@ -240,6 +273,7 @@ void testInsertionRotations() {
     lr.insert(3);
     lr.insert(1);
     lr.insert(2);
+    assertRotation(lr, AVLRotationType::LeftRight, 3);
     assertRootState(lr, 2);
     assertInorder(lr, {1, 2, 3});
 
@@ -247,6 +281,7 @@ void testInsertionRotations() {
     rl.insert(1);
     rl.insert(3);
     rl.insert(2);
+    assertRotation(rl, AVLRotationType::RightLeft, 1);
     assertRootState(rl, 2);
     assertInorder(rl, {1, 2, 3});
 
@@ -334,6 +369,7 @@ void testDeletionTriggeredSingleRotation() {
     assertRootState(tree, 3);
 
     assert(tree.remove(1));
+    assertRotation(tree, AVLRotationType::Left, 2);
     assertRootState(tree, 3);
     assertInorder(tree, {2, 3, 4, 5});
 
@@ -363,6 +399,7 @@ void testDeletionTriggeredRightRotation() {
     assertRootState(tree, 3);
 
     assert(tree.remove(6));
+    assertRotation(tree, AVLRotationType::Right, 4);
     assertRootState(tree, 3);
     assertInorder(tree, {1, 2, 3, 4});
 }
@@ -378,6 +415,7 @@ void testDeletionTriggeredDoubleRotation() {
     assertRootState(tree, 3);
 
     assert(tree.remove(1));
+    assertRotation(tree, AVLRotationType::RightLeft, 3);
     assertRootState(tree, 2);
     assertInorder(tree, {3, 4, 5});
 }
@@ -413,6 +451,27 @@ void testDeletionRebalancesMultipleAncestors() {
     assertInorder(tree, {3, 5, 6, 7, 8, 9});
 }
 
+void testSingleDeletionRotatesAtMultipleAncestors() {
+    AVLTree tree;
+    for (int key : {1, 10, 5, 7, 2, 6, 11, 8, 3, 12, 4, 9}) {
+        tree.insert(key);
+        tree.takeRotationEvents();
+    }
+
+    assert(tree.remove(1));
+    const std::vector<AVLRotationEvent> events = tree.takeRotationEvents();
+    assert(events.size() == 2);
+    assert(events[0].type == AVLRotationType::Left);
+    assert(events[0].mutation == AVLMutationType::Delete);
+    assert(events[0].pivotKey == 2);
+    assert(events[0].operationKey == 1);
+    assert(events[1].type == AVLRotationType::RightLeft);
+    assert(events[1].mutation == AVLMutationType::Delete);
+    assert(events[1].pivotKey == 5);
+    assert(events[1].operationKey == 1);
+    assertInorder(tree, {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12});
+}
+
 void testDeletionUntilEmpty() {
     // Delete every key of a larger tree in a mixed order; the tree must
     // stay balanced throughout and end up empty.
@@ -440,6 +499,7 @@ void testDeletionUntilEmpty() {
 
 int main() {
     testOwnershipContract();
+    testSnapshot();
     testInsertionAndSearch();
     testTraversalOrdersAndEmptyTree();
     testRecursiveInvariantsAfterMutations();
@@ -449,6 +509,7 @@ int main() {
     testDeletionTriggeredRightRotation();
     testDeletionTriggeredDoubleRotation();
     testDeletionRebalancesMultipleAncestors();
+    testSingleDeletionRotatesAtMultipleAncestors();
     testDeletionUntilEmpty();
     return 0;
 }
