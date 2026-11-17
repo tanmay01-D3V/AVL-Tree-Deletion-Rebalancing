@@ -1,53 +1,111 @@
-# AVL-Tree-Deletion-Rebalancing
-DSA-II Group Project — AVL Tree Implementation with Full Deletion Rebalancing in C++
+# AVL Tree Deletion Rebalancing
 
-## Architecture
+DSA-II group project: a C++17 AVL tree with insertion, search, deletion,
+traversals, and an interactive console application. The tree keeps keys in
+binary-search-tree order and rebalances after insertions and deletions.
 
-`include/AVLNode.h` defines the shared node type. `include/AVLTree.h` is the
-stable interface for the implementation modules. `AVLTree` exclusively owns
-its nodes, releases them in its destructor, and cannot be copied. Call
-`clear()` to release the current contents and leave the tree empty.
+## Features
 
-### Shared interface
+- Insert unique integer keys; duplicate insertions are ignored.
+- Search for a key and remove a key, with a success result for deletion.
+- Rebalance using LL, RR, LR, and RL rotations. Deletion rebalances every
+  affected ancestor.
+- Display inorder, preorder, and postorder traversals, tree height, and the
+  root balance factor.
+- Manage owned nodes with `AVLTree`; copying is disabled and destruction or
+  `clear()` releases the tree.
 
-```cpp
-AVLTree() noexcept;
-~AVLTree() noexcept;
-void insert(int key);
-bool remove(int key);
-bool search(int key) const noexcept;
-std::vector<int> inorderTraversal() const;
-std::vector<int> preorderTraversal() const;
-std::vector<int> postorderTraversal() const;
-int getHeight() const noexcept;
-int getBalanceFactor() const noexcept;
-void clear() noexcept;
+A null subtree has height `0`, a leaf has height `1`, and balance factor is
+`height(left) - height(right)`. A balanced node has a factor from `-1` through
+`1`.
+
+## Team responsibilities and contribution record
+
+Issue assignments and commit authorship differ in places. GitHub currently
+records these responsibilities:
+
+- **Tanmay Vijay Sherkar:** architecture (Issue #1), console application and
+  integration (Issue #6), and coordination of shared validation/documentation
+  (Issue #7).
+- **Alina Patel:** rotations and balancing helpers (Issue #2).
+- **Shubham Mane:** insertion/search (Issue #3) and traversals/utilities
+  (Issue #5).
+- **Aditya Kadam:** deletion with upward rebalancing (Issue #4).
+- **All members:** shared testing and documentation (Issue #7).
+
+PR #15 was authored by Aditya Kadam and includes the balancing and deletion
+implementations, as well as insertion/search, traversal, and test files used to
+exercise deletion. Confirm final contribution attribution with the team;
+GitHub assignments alone do not establish who wrote each module.
+
+## Project structure
+
+```text
+include/AVLNode.h       AVL node definition
+include/AVLTree.h       Public tree interface and private helper declarations
+src/AVLTree.cpp         Ownership, height, balance-factor, and cleanup logic
+src/AVLBalance.cpp      Rotations and rebalancing
+src/AVLInsert.cpp       Insertion and search
+src/AVLDelete.cpp       Removal and upward rebalancing
+src/AVLTraversal.cpp    Inorder, preorder, and postorder traversals
+tests/tests.cpp         AVL behavior and invariant tests
+main.cpp                Interactive console application
+CMakeLists.txt          Library, application, and test build configuration
 ```
 
-`insert` ignores duplicate keys. `remove` returns `true` only when it removes
-an existing key, and `search` reports whether a key is present. Traversals
-return keys in the named order. A null subtree has height `0`, a leaf has
-height `1`, and balance factor is `height(left) - height(right)`; therefore a
-valid AVL node has a balance factor from `-1` through `1`.
+## Prerequisites
 
-The private helpers in `AVLTree.h` are shared implementation hooks: Aditya
-implements rotations and rebalancing in `src/AVLBalance.cpp`; Shubham implements
-insertion/search and traversals/utilities in `src/AVLInsert.cpp` and
-`src/AVLTraversal.cpp`; Alina implements removal and upward rebalancing in
-`src/AVLDelete.cpp`. Keep these definitions consistent with the header and
-avoid duplicating algorithms across modules. This architecture change provides
-no insertion, removal, search, or traversal algorithm implementations.
+- CMake 3.16 or newer
+- A C++17-compatible compiler
 
-## Build and verification
+## Build and run
 
-Requires CMake 3.16 or newer and a C++17 compiler.
+From the repository root:
 
 ```sh
 cmake -S . -B build
 cmake --build build
+./build/avl_demo
+```
+
+On Windows, run `build\avl_demo.exe` instead.
+
+## Menu
+
+1. Insert an integer.
+2. Delete an integer.
+3. Search for an integer.
+4. Display inorder traversal.
+5. Display preorder traversal.
+6. Display postorder traversal.
+7. Display tree height.
+8. Display the root balance factor.
+9. Display tree contents in inorder.
+10. Exit.
+
+Input is read one line at a time. Invalid menu choices and non-integer values
+are rejected without terminating the application. Empty-tree operations report
+the empty state (height is `0`, and root balance factor is `0`). Duplicate
+keys are ignored and reported.
+
+## Tests
+
+Run the CTest suite after building:
+
+```sh
 ctest --test-dir build --output-on-failure
 ```
 
-The current tests verify node initialization, empty-tree height/balance,
-idempotent cleanup, and non-copyable ownership. Algorithm behavior remains
-unimplemented until the assigned modules are completed.
+Tests cover all four rotation patterns, insertion and duplicate handling,
+search, leaf/one-child/two-child and root deletion, deletion rebalancing,
+traversal order, empty-tree behavior, and repeated mutations. The recursive
+invariant checker verifies BST ordering, every stored node height, and every
+node's balance factor after mutation sequences.
+
+## Known limitations
+
+- The console application operates on integer keys and does not persist data
+  after exit.
+- The public balance-factor API reports the root's balance factor; the
+  recursive test checker inspects all nodes.
+- The tree is intended for single-threaded use.
