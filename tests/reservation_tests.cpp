@@ -1,3 +1,9 @@
+// Tests must keep assert() active even in Release builds, where CMake defines
+// NDEBUG. Undefine it before <cassert> is included so invariant checks always run.
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 #include "AVLTree.h"
 #include "Reservation.h"
 #include "ReservationStore.h"
@@ -6,6 +12,7 @@
 #include <array>
 #include <cassert>
 #include <chrono>
+#include <cstdio>
 #include <filesystem>
 #include <limits>
 #include <random>
@@ -253,6 +260,13 @@ void testReservationPersistenceRebuildsTheIndex() {
 } // namespace
 
 int main() {
+    bool assertionsActive = false;
+    assert((assertionsActive = true));
+    if (!assertionsActive) {
+        std::fprintf(stderr, "FAIL: assertions are disabled; rebuild tests with checks enabled.\n");
+        return 1;
+    }
+
     testRandomizedOperationsAgainstSet();
     testReservationCrudAndIndexSynchronization();
     testInvalidReservationFieldsAreRejected();
